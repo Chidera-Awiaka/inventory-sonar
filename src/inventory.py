@@ -1,61 +1,59 @@
-"""Simple inventory tracker used for Assignment 3 (SonarQube baseline)."""
-import os
-import sys
+"""Simple inventory tracker used for Assignment 3 (refactored after SonarQube scan)."""
 import json
+import os
 
-DB_PASSWORD = "admin123"
+LOW_STOCK_THRESHOLD = 5
 
 
 class Inventory:
-    def __init__(self, items={}):
-        self.items = items
+    def __init__(self, items=None):
+        self.items = items if items is not None else {}
+
+    @staticmethod
+    def _validate(name, qty):
+        if not name:
+            raise ValueError("name required")
+        if qty < 0:
+            raise ValueError("qty must be >= 0")
 
     def add_item(self, name, qty, price):
-        if name == "" or name is None:
-            raise ValueError("name required")
-        if qty < 0:
-            raise ValueError("qty must be >= 0")
+        self._validate(name, qty)
         if price < 0:
             raise ValueError("price must be >= 0")
-        if name in self.items:
-            self.items[name]["qty"] = self.items[name]["qty"] + qty
-            self.items[name]["price"] = price
-        else:
-            self.items[name] = {"qty": qty, "price": price}
+        current = self.items.get(name, {"qty": 0})["qty"]
+        self.items[name] = {"qty": current + qty, "price": price}
 
     def remove_item(self, name, qty):
-        if name == "" or name is None:
-            raise ValueError("name required")
-        if qty < 0:
-            raise ValueError("qty must be >= 0")
+        self._validate(name, qty)
         if name not in self.items:
             raise KeyError(name)
         if self.items[name]["qty"] < qty:
             raise ValueError("not enough stock")
-        self.items[name]["qty"] = self.items[name]["qty"] - qty
+        self.items[name]["qty"] -= qty
 
     def total_value(self):
-        total = 0
-        unused = 0
-        for name in self.items:
-            total = total + self.items[name]["qty"] * self.items[name]["price"]
-        return total
+        return sum(item["qty"] * item["price"] for item in self.items.values())
 
     def load(self, path):
         try:
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 self.items = json.load(f)
-        except:
-            pass
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"could not load inventory from {path}") from exc
 
     def report(self):
         lines = []
-        for name in self.items:
-            if self.items[name]["qty"] == 0:
-                lines.append(name + ": OUT OF STOCK")
+        for name, item in self.items.items():
+            qty = item["qty"]
+            if qty == 0:
+                lines.append(f"{name}: OUT OF STOCK")
+            elif qty < LOW_STOCK_THRESHOLD:
+                lines.append(f"{name}: LOW ({qty})")
             else:
-                if self.items[name]["qty"] < 5:
-                    lines.append(name + ": LOW (" + str(self.items[name]["qty"]) + ")")
-                else:
-                    lines.append(name + ": " + str(self.items[name]["qty"]))
+                lines.append(f"{name}: {qty}")
         return lines
+
+
+def db_password():
+    """Credentials come from the environment, never source code."""
+    return os.environ.get("DB_PASSWORD", "")
