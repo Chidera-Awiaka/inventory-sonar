@@ -25,7 +25,7 @@ jobs:
 
       # Hash-locked requirements + wheels only: no unpinned resolution, no setup.py execution.
       - name: Install dependencies
-        run: pip install --require-hashes --only-binary :all: -r requirements.txt
+        run: "pip install --require-hashes --only-binary :all: -r requirements.txt"
 
       - name: Run tests with coverage
         run: pytest --cov=src --cov-report=xml:coverage.xml --cov-report=term
