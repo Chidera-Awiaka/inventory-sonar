@@ -40,3 +40,42 @@ def test_invalid_add():
         inv.add_item("", 1, 1)
     with pytest.raises(ValueError):
         inv.add_item("x", -1, 1)
+
+
+def test_default_items_not_shared():
+    a = Inventory()
+    b = Inventory()
+    a.add_item("x", 1, 1)
+    assert b.items == {}
+
+
+def test_report_levels():
+    inv = make()
+    inv.add_item("a", 0, 1)
+    inv.add_item("b", 3, 1)
+    inv.add_item("c", 9, 1)
+    assert inv.report() == ["a: OUT OF STOCK", "b: LOW (3)", "c: 9"]
+
+
+def test_load_ok(tmp_path):
+    p = tmp_path / "inv.json"
+    p.write_text('{"apple": {"qty": 2, "price": 1.5}}')
+    inv = make()
+    inv.load(p)
+    assert inv.total_value() == pytest.approx(3.0)
+
+
+def test_load_bad_file_raises(tmp_path):
+    inv = make()
+    with pytest.raises(ValueError):
+        inv.load(tmp_path / "missing.json")
+
+
+def test_remove_missing_and_invalid():
+    inv = make()
+    with pytest.raises(KeyError):
+        inv.remove_item("ghost", 1)
+    with pytest.raises(ValueError):
+        inv.remove_item("", 1)
+    with pytest.raises(ValueError):
+        inv.add_item("x", 1, -1)
